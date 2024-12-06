@@ -1,0 +1,19 @@
+mode: set
+stp/lab3/main.go:10.56,15.35 4 1
+stp/lab3/main.go:15.35,19.3 3 1
+stp/lab3/main.go:21.2,21.15 1 1
+stp/lab3/main.go:24.68,30.35 5 1
+stp/lab3/main.go:30.35,32.39 2 1
+stp/lab3/main.go:32.39,35.4 2 1
+stp/lab3/main.go:36.3,36.15 1 1
+stp/lab3/main.go:39.2,39.20 1 1
+stp/lab3/main.go:39.20,41.3 1 1
+stp/lab3/main.go:43.2,43.22 1 1
+stp/lab3/main.go:46.62,55.2 6 1
+stp/lab3/main.go:57.80,58.35 1 1
+stp/lab3/main.go:58.35,60.3 1 1
+stp/lab3/main.go:62.2,64.30 3 1
+stp/lab3/main.go:64.30,65.35 1 1
+stp/lab3/main.go:65.35,66.27 1 1
+stp/lab3/main.go:66.27,68.5 1 1
+stp/lab3/main.go:72.2,72.17 1 1
