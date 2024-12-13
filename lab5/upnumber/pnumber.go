@@ -2,8 +2,8 @@ package upnumber
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
+	"strings"
 )
 
 // TPNumber представляет р-ичное число.
@@ -99,9 +99,13 @@ func (p *TPNumber) GetValue() float64 {
 	return p.value
 }
 
-// ToString возвращает строковое представление числа.
+// ToString возвращает строковое представление числа в системе счисления base.
 func (p *TPNumber) ToString() string {
-	return fmt.Sprintf("%.*f", p.precision, p.value)
+	result, err := formatFloatToBase(p.value, p.base, p.precision)
+	if err != nil {
+		return "Error: " + err.Error()
+	}
+	return result
 }
 
 // GetBase возвращает основание системы счисления.
@@ -130,4 +134,37 @@ func (p *TPNumber) SetPrecision(newPrecision int) error {
 	}
 	p.precision = newPrecision
 	return nil
+}
+
+// formatFloatToBase преобразует float64 в строку в заданной системе счисления с точностью.
+func formatFloatToBase(value float64, base, precision int) (string, error) {
+	if base < 2 || base > 16 {
+		return "", errors.New("base must be in range [2..16]")
+	}
+
+	// Отделяем целую и дробную части
+	intPart := int64(value)
+	fracPart := value - float64(intPart)
+
+	// Форматируем целую часть
+	intStr := strconv.FormatInt(intPart, base)
+
+	// Если точность 0, возвращаем только целую часть
+	if precision == 0 {
+		return intStr, nil
+	}
+
+	// Форматируем дробную часть
+	var fracStr strings.Builder
+	fracStr.WriteString(".")
+
+	for i := 0; i < precision; i++ {
+		fracPart *= float64(base)
+		digit := int64(fracPart)
+		fracStr.WriteString(strconv.FormatInt(digit, base))
+		fracPart -= float64(digit)
+	}
+
+	// Объединяем целую и дробную часть
+	return intStr + fracStr.String(), nil
 }
