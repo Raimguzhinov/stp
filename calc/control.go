@@ -7,7 +7,7 @@ import (
 )
 
 type ControlUnit struct {
-	editor    *FractionEditor
+	editor    *Editor
 	processor *Processor
 	memory    *Memory
 	history   *History
@@ -15,7 +15,7 @@ type ControlUnit struct {
 
 func NewControlUnit() *ControlUnit {
 	return &ControlUnit{
-		editor:    NewFractionEditor(),
+		editor:    NewEditor(),
 		processor: NewProcessor(),
 		memory:    NewMemory(),
 		history:   NewHistory(),
@@ -27,7 +27,7 @@ func (c *ControlUnit) Input(char string) string {
 }
 
 func (c *ControlUnit) ApplyFunction(fn string) string {
-	val, err := NewFractionFromString(c.editor.buffer)
+	val, err := ParseNumber(c.editor.buffer)
 	if err != nil {
 		log.Error(err)
 		return "Ошибка"
@@ -42,37 +42,41 @@ func (c *ControlUnit) ApplyFunction(fn string) string {
 }
 
 func (c *ControlUnit) Evaluate() string {
+	var op string
+
 	// Подготовка
-	if c.editor.operand1 == nil && c.editor.lastResult != nil && c.editor.repeatOp != "" && c.editor.repeatValue != nil {
-		c.editor.operand1 = c.editor.lastResult
-		c.editor.operation = c.editor.repeatOp
-		c.editor.operand2 = c.editor.repeatValue
-	} else {
-		if c.editor.operation == "" {
+	if c.editor.operation == "" {
+		// Повторное равно
+		if c.editor.lastResult == nil || c.editor.repeatOp == "" || c.editor.repeatValue == nil {
 			return c.editor.buffer
 		}
-		val, err := NewFractionFromString(c.editor.buffer)
+		c.editor.operand1 = c.editor.lastResult
+		c.editor.operand2 = c.editor.repeatValue
+		op = c.editor.repeatOp
+	} else {
+		val, err := ParseNumber(c.editor.buffer)
 		if err != nil {
 			log.Error(err)
-			return "Ошибка"
+			return c.editor.buffer
 		}
 		c.editor.repeatValue = val
 		c.editor.operand2 = val
+		op = c.editor.operation
 	}
 
 	// Вычисление
-	res, err := c.processor.Execute(c.editor.operation, c.editor.operand1, c.editor.operand2)
+	res, err := c.processor.Execute(op, c.editor.operand1, c.editor.operand2)
 	if err != nil {
 		log.Error(err)
 		return "Ошибка"
 	}
 
 	// Обновление
-	c.history.Add(c.editor.operand1, c.editor.operation, c.editor.operand2, res.String())
+	c.history.Add(c.editor.operand1, op, c.editor.operand2, res.String())
 	c.editor.lastResult = res
 	c.editor.buffer = res.String()
 	c.editor.operand1 = res
-	c.editor.repeatOp = c.editor.operation
+	c.editor.repeatOp = op
 	c.editor.operation = ""
 
 	return c.editor.buffer
@@ -140,8 +144,8 @@ func (c *ControlUnit) PasteExpression(input string) string {
 			if len(parts) != 2 {
 				return "Ошибка"
 			}
-			a, err1 := NewFractionFromString(parts[0])
-			b, err2 := NewFractionFromString(parts[1])
+			a, err1 := ParseNumber(parts[0])
+			b, err2 := ParseNumber(parts[1])
 			if err1 != nil || err2 != nil {
 				return "Ошибка"
 			}
@@ -165,7 +169,7 @@ func (c *ControlUnit) PasteExpression(input string) string {
 	}
 
 	// Если нет оператора — пробуем вставить как отдельную дробь
-	val, err := NewFractionFromString(input)
+	val, err := ParseNumber(input)
 	if err != nil {
 		return "Ошибка"
 	}

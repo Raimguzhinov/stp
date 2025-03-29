@@ -5,75 +5,76 @@ import (
 	"strings"
 )
 
-type FractionEditor struct {
+type Editor struct {
 	buffer      string
-	operand1    *FractionNumber
-	operand2    *FractionNumber
+	operand1    Number
+	operand2    Number
 	operation   string
-	lastResult  *FractionNumber
+	lastResult  Number
 	repeatOp    string
-	repeatValue *FractionNumber
+	repeatValue Number
 }
 
-func NewFractionEditor() *FractionEditor {
-	return &FractionEditor{}
+func NewEditor() *Editor {
+	return &Editor{}
 }
 
-func (f *FractionEditor) Input(char string) string {
+func (e *Editor) Input(char string) string {
 	switch char {
 	case LabelNegate:
-		if strings.HasPrefix(f.buffer, "-") {
-			f.buffer = strings.TrimPrefix(f.buffer, "-")
+		if strings.HasPrefix(e.buffer, "-") {
+			e.buffer = strings.TrimPrefix(e.buffer, "-")
 		} else {
-			f.buffer = "-" + f.buffer
+			e.buffer = "-" + e.buffer
 		}
 	case LabelBack:
-		if len(f.buffer) > 0 {
-			f.buffer = f.buffer[:len(f.buffer)-1]
+		if len(e.buffer) > 0 {
+			e.buffer = e.buffer[:len(e.buffer)-1]
 		}
 	case LabelClear:
-		f.clear()
+		e.clear()
 	case LabelPlus, LabelMinus, LabelMultiply, LabelDivide:
-		if f.buffer == "" {
-			if f.lastResult != nil {
-				f.operand1 = f.lastResult
-				f.operation = char
+		if e.buffer == "" {
+			if e.lastResult != nil {
+				e.operand1 = e.lastResult
+				e.operation = char
 			}
 			return ""
 		}
-		frac, err := NewFractionFromString(f.buffer)
+		number, err := ParseNumber(e.buffer)
 		if err != nil {
+			log.Error(err)
 			return "Ошибка"
 		}
-		f.operand1 = frac
-		f.operation = char
-		f.buffer = ""
+		e.operand1 = number
+		e.operation = char
+		e.buffer = ""
 	case LabelFracSep:
-		f.setOrReplaceChar(char, "1")
+		e.setOrReplaceChar(char, "1")
 	case LabelDot:
-		f.setOrReplaceChar(char, "0")
+		e.setOrReplaceChar(char, "0")
 	default:
-		f.buffer += char
+		e.buffer += char
 	}
-	return f.buffer
+	return e.buffer
 }
 
-func (f *FractionEditor) setOrReplaceChar(char, autoSetFirstOperand string) {
-	if !strings.Contains(f.buffer, char) {
-		if f.buffer == "" {
-			f.buffer += autoSetFirstOperand
+func (e *Editor) setOrReplaceChar(char, autoSetFirstOperand string) {
+	if !strings.Contains(e.buffer, char) {
+		if e.buffer == "" {
+			e.buffer += autoSetFirstOperand
 		}
-		f.buffer += char
+		e.buffer += char
 	}
 }
 
-func (f *FractionEditor) clear() {
+func (e *Editor) clear() {
 	log.Debug("очистка...")
-	f.buffer = ""
-	f.operand1 = nil
-	f.operand2 = nil
-	f.lastResult = nil
-	f.operation = ""
-	f.repeatOp = ""
-	f.repeatValue = nil
+	e.buffer = ""
+	e.operand1 = nil
+	e.operand2 = nil
+	e.lastResult = nil
+	e.operation = ""
+	e.repeatOp = ""
+	e.repeatValue = nil
 }

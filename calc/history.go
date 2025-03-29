@@ -4,8 +4,8 @@ import "fmt"
 
 // HistoryRecord — одна запись в истории вычислений.
 type HistoryRecord struct {
-	Operand1 *FractionNumber
-	Operand2 *FractionNumber
+	Operand1 Number
+	Operand2 Number
 	Operator string
 	Result   string
 }
@@ -18,7 +18,7 @@ func NewHistory() *History {
 	return &History{records: make([]HistoryRecord, 0)}
 }
 
-func (h *History) Add(op1 *FractionNumber, op string, op2 *FractionNumber, result string) {
+func (h *History) Add(op1 Number, op string, op2 Number, result string) {
 	h.records = append(h.records, HistoryRecord{
 		Operand1: op1,
 		Operand2: op2,

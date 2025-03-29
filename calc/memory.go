@@ -2,26 +2,25 @@ package main
 
 // Memory хранит одно число и позволяет выполнять стандартные действия: MS, MR, M+, MC.
 type Memory struct {
-	value *FractionNumber
+	value Number
 }
 
 func NewMemory() *Memory {
 	return &Memory{}
 }
 
-func (m *Memory) Save(val *FractionNumber) {
+func (m *Memory) Save(val Number) {
 	m.value = val
 }
 
-func (m *Memory) Read() *FractionNumber {
+func (m *Memory) Read() Number {
 	if m.value == nil {
 		return nil
 	}
-	fcopy := &FractionNumber{numerator: m.value.Numerator(), denominator: m.value.Denominator()}
-	return fcopy.shrink()
+	return m.value.Copy()
 }
 
-func (m *Memory) Add(val *FractionNumber) {
+func (m *Memory) Add(val Number) {
 	if m.value == nil {
 		m.value = val
 	} else {

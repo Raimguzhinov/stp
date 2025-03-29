@@ -130,14 +130,43 @@ func InitUI(w fyne.Window) {
 
 	w.Resize(fyne.NewSize(400, 600))
 	w.SetFixedSize(true)
+	w.Canvas().SetOnTypedKey(func(ev *fyne.KeyEvent) {
+		switch ev.Name {
+		case fyne.KeyBackspace:
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelBack))
+		case fyne.KeyDelete, fyne.KeyEscape:
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelClear))
+		case fyne.KeyReturn, fyne.KeyEnter:
+			updateDisplay(display, decimalLabel, ctrl.Evaluate())
+		}
+	})
+	w.Canvas().SetOnTypedRune(func(r rune) {
+		ch := string(r)
+		switch ch {
+		case "+":
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelPlus))
+		case "-":
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelMinus))
+		case "*", "x", "X":
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelMultiply))
+		case "/":
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelFracSep))
+		case ".", ",":
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelDot))
+		default:
+			if ch >= "0" && ch <= "9" {
+				updateDisplay(display, decimalLabel, ctrl.Input(ch))
+			}
+		}
+	})
 	w.SetContent(mainContent)
 }
 
 func updateDisplay(display *widget.Label, decimalLabel *widget.Label, text string) {
 	display.SetText(text)
-	if f, err := NewFractionFromString(text); err == nil {
-		if f.Denominator() != 1 {
-			d := fmt.Sprintf("≈ %.10g", f.Float64())
+	if n, err := ParseNumber(text); err == nil {
+		if f, ok := n.(*FractionNumber); ok && f.Denominator() != 1 {
+			d := fmt.Sprintf("≈ %.10g", n.Float64())
 			decimalLabel.SetText(d)
 		} else {
 			decimalLabel.SetText("")

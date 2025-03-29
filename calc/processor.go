@@ -8,7 +8,7 @@ func NewProcessor() *Processor {
 	return &Processor{}
 }
 
-func (p *Processor) Execute(op string, a, b *FractionNumber) (*FractionNumber, error) {
+func (p *Processor) Execute(op string, a, b Number) (Number, error) {
 	switch op {
 	case LabelPlus:
 		return a.Add(b), nil
@@ -23,7 +23,7 @@ func (p *Processor) Execute(op string, a, b *FractionNumber) (*FractionNumber, e
 	}
 }
 
-func (p *Processor) ApplyUnary(op string, a *FractionNumber) (*FractionNumber, error) {
+func (p *Processor) ApplyUnary(op string, a Number) (Number, error) {
 	switch op {
 	case LabelSqr:
 		return a.Square(), nil
