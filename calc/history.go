@@ -27,6 +27,12 @@ func (h *History) Add(op1 *FractionNumber, op string, op2 *FractionNumber, resul
 	})
 }
 
+func (h *History) Delete(index int) {
+	if index >= 0 && index < len(h.records) {
+		h.records = append(h.records[:index], h.records[index+1:]...)
+	}
+}
+
 func (h *History) Strings() []string {
 	var res []string
 	for _, r := range h.records {
