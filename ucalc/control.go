@@ -44,52 +44,50 @@ func (c *ControlUnit) ApplyFunction(fn string) string {
 func (c *ControlUnit) Evaluate() string {
 	var op string
 
-	// Подготовка
 	if c.editor.operation == "" {
 		// Повторное равно
 		if c.editor.lastResult == nil || c.editor.repeatOp == "" || c.editor.repeatValue == nil {
 			return c.editor.buffer
 		}
-		c.editor.operand1 = c.editor.lastResult
-		c.editor.operand2 = c.editor.repeatValue
+		c.editor.operand1 = c.editor.lastResult.Copy()
+		c.editor.operand2 = c.editor.repeatValue.Copy()
 		op = c.editor.repeatOp
 	} else {
 		val, err := ParseNumber(c.editor.buffer)
 		if err != nil {
 			log.Error(err)
-			return c.editor.buffer
+			return "Ошибка"
 		}
 		c.editor.repeatValue = val
 		c.editor.operand2 = val
 		op = c.editor.operation
 	}
 
-	// Вычисление
 	res, err := c.processor.Execute(op, c.editor.operand1, c.editor.operand2)
 	if err != nil {
 		log.Error(err)
 		return "Ошибка"
 	}
 
-	// Обновление
 	c.history.Add(c.editor.operand1, op, c.editor.operand2, res.String())
 	c.editor.lastResult = res
 	c.editor.buffer = res.String()
 	c.editor.operand1 = res
-	c.editor.repeatOp = op
 	c.editor.operation = ""
+	c.editor.repeatOp = op
 
 	return c.editor.buffer
 }
 
 func (c *ControlUnit) MemorySave() {
 	if c.editor.lastResult != nil {
-		c.memory.Save(c.editor.lastResult)
+		c.memory.Save(c.editor.lastResult.Copy())
 	}
 }
 
 func (c *ControlUnit) MemoryRead() string {
-	if val := c.memory.Read(); val != nil {
+	val := c.memory.Read()
+	if val != nil {
 		c.editor.buffer = val.String()
 		return c.editor.buffer
 	}
@@ -132,12 +130,10 @@ func (c *ControlUnit) PasteExpression(input string) string {
 	input = strings.ReplaceAll(input, " ", "")
 	input = strings.TrimSuffix(input, "\n")
 
-	// Если есть "=" — обрезаем результат
 	if parts := strings.Split(input, "="); len(parts) == 2 {
 		input = parts[0]
 	}
 
-	// Попытка распарсить как выражение (a op b)
 	for _, op := range []string{LabelPlus, LabelMinus, LabelMultiply, LabelDivide} {
 		if strings.Contains(input, op) {
 			parts := strings.Split(input, op)
@@ -149,7 +145,6 @@ func (c *ControlUnit) PasteExpression(input string) string {
 			if err1 != nil || err2 != nil {
 				return "Ошибка"
 			}
-
 			res, err := c.processor.Execute(op, a, b)
 			if err != nil {
 				return "Ошибка"
@@ -168,12 +163,10 @@ func (c *ControlUnit) PasteExpression(input string) string {
 		}
 	}
 
-	// Если нет оператора — пробуем вставить как отдельную дробь
 	val, err := ParseNumber(input)
 	if err != nil {
 		return "Ошибка"
 	}
-
 	c.editor.buffer = val.String()
 	return c.editor.buffer
 }

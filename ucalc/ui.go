@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	LabelClear    = "C"
+	LabelClear    = "АС"
 	LabelBack     = "←"
 	LabelSqr      = "Sqr"
 	LabelInverse  = "1/x"
@@ -40,6 +40,8 @@ const (
 
 var modeNames = []string{"Дроби", "p-числа", "Комплексные"}
 var currentMode = ModeFraction
+var currentBase int = 10
+var currentPrecision int = 0
 
 func InitUI(w fyne.Window) {
 	ctrl := NewControlUnit()
@@ -132,18 +134,24 @@ func InitUI(w fyne.Window) {
 	modeSelect := widget.NewSelect(modeNames, func(sel string) {
 		switch sel {
 		case "Дроби":
+			display.SetText("0")
+			ctrl.editor.clear()
 			currentMode = ModeFraction
 			fractionUI.Show()
 			tpUI.Hide()
 			tpControls.Hide()
 			complexUI.Hide()
 		case "p-числа":
+			display.SetText("0")
+			ctrl.editor.clear()
 			currentMode = ModeTPNumber
 			fractionUI.Hide()
 			tpUI.Show()
 			tpControls.Show()
 			complexUI.Hide()
 		case "Комплексные":
+			display.SetText("0")
+			ctrl.editor.clear()
 			currentMode = ModeComplex
 			fractionUI.Hide()
 			tpUI.Hide()
@@ -226,12 +234,16 @@ func InitUI(w fyne.Window) {
 	}
 	updateDigitButtonStates(int(tpBase.Value))
 	tpBase.OnChanged = func(v float64) {
+		display.SetText("0")
+		ctrl.editor.clear()
 		base := int(v)
 		baseLabel.SetText(fmt.Sprintf("Основание: %d", base))
+		currentBase = base
 		updateDigitButtonStates(base)
 	}
 	tpPrec.OnChanged = func(v float64) {
 		precLabel.SetText(fmt.Sprintf("Точность: %d", int(v)))
+		currentPrecision = int(v)
 	}
 	tpOps := container.NewGridWithColumns(4)
 	for _, op := range []string{LabelPlus, LabelMinus, LabelMultiply, LabelDivide} {
@@ -294,6 +306,68 @@ func InitUI(w fyne.Window) {
 
 	w.Resize(fyne.NewSize(400, 600))
 	w.SetFixedSize(true)
+	w.Canvas().SetOnTypedKey(func(ev *fyne.KeyEvent) {
+		switch ev.Name {
+		case fyne.KeyBackspace:
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelBack))
+		case fyne.KeyDelete, fyne.KeyEscape:
+			updateDisplay(display, decimalLabel, ctrl.Input(LabelClear))
+		case fyne.KeyReturn, fyne.KeyEnter:
+			updateDisplay(display, decimalLabel, ctrl.Evaluate())
+		}
+	})
+	w.Canvas().SetOnTypedRune(func(r rune) {
+		ch := strings.ToUpper(string(r))
+		switch currentMode {
+		case ModeFraction:
+			switch ch {
+			case "+", "-":
+				updateDisplay(display, decimalLabel, ctrl.Input(ch))
+			case "*", "X":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelMultiply))
+			case "/":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelFracSep))
+			case ".", ",":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelDot))
+			default:
+				if ch >= "0" && ch <= "9" {
+					updateDisplay(display, decimalLabel, ctrl.Input(ch))
+				}
+			}
+		case ModeTPNumber:
+			switch ch {
+			case "+", "-":
+				updateDisplay(display, decimalLabel, ctrl.Input(ch))
+			case "*", "X":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelMultiply))
+			case "/":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelDivide))
+			case ".", ",":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelDot))
+			default:
+				if (ch >= "0" && ch <= "9") || (ch >= "A" && ch <= "F") {
+					updateDisplay(display, decimalLabel, ctrl.Input(ch))
+				}
+			}
+		case ModeComplex:
+			switch ch {
+			case "+", "-":
+				updateDisplay(display, decimalLabel, ctrl.Input(ch))
+			case "*", "X":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelMultiply))
+			case "/", "÷":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelDivide))
+			case ".", ",":
+				updateDisplay(display, decimalLabel, ctrl.Input(LabelDot))
+			case "I":
+				updateDisplay(display, decimalLabel, ctrl.Input("i"))
+			default:
+				if ch >= "0" && ch <= "9" {
+					updateDisplay(display, decimalLabel, ctrl.Input(ch))
+				}
+			}
+		}
+	})
 	w.SetContent(mainContent)
 }
 
