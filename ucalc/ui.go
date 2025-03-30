@@ -27,8 +27,19 @@ const (
 	LabelMinus    = "-"
 	LabelPlus     = "+"
 	LabelEqual    = "="
-	LabelFracSep  = "/" // дробная черта
+	LabelFracSep  = "/"
 )
+
+type CalcMode int
+
+const (
+	ModeFraction CalcMode = iota
+	ModeTPNumber
+	ModeComplex
+)
+
+var modeNames = []string{"Дроби", "p-числа", "Комплексные"}
+var currentMode = ModeFraction
 
 func InitUI(w fyne.Window) {
 	ctrl := NewControlUnit()
@@ -55,8 +66,97 @@ func InitUI(w fyne.Window) {
 		updateDisplay(display, decimalLabel, result)
 	})
 
+	var fractionUI, tpUI, complexUI *fyne.Container
+
+	baseLabel := widget.NewLabel("Основание:")
+	tpBase := widget.NewSlider(2, 16)
+	tpBase.Step = 1
+	tpBase.Value = 10
+	tpBase.Orientation = widget.Horizontal
+
+	precLabel := widget.NewLabel("Точность:")
+	tpPrec := widget.NewSlider(0, 10)
+	tpPrec.Step = 1
+	tpPrec.Value = 0
+	tpPrec.Orientation = widget.Horizontal
+
+	tpControls := container.NewVBox(
+		baseLabel, tpBase,
+		precLabel, tpPrec,
+	)
+	tpControls.Hide() // по умолчанию скрыт
+
+	// ====== Общие управляющие кнопки (MS/MR/M+/MC) ======
+	msRow := container.NewGridWithColumns(4,
+		widget.NewButton(LabelMS, func() { ctrl.MemorySave() }),
+		widget.NewButton(LabelMR, func() { updateDisplay(display, decimalLabel, ctrl.MemoryRead()) }),
+		widget.NewButton(LabelMPlus, func() { ctrl.MemoryAdd() }),
+		widget.NewButton(LabelMC, func() { ctrl.MemoryClear() }),
+	)
+
+	// ====== Адаптивные управляющие кнопки (C/← [+ Sqr/1/x]) ======
+	var controlRowBox *fyne.Container
+	updateControlRow := func() {
+		var row *fyne.Container
+		if currentMode == ModeFraction {
+			row = container.NewGridWithColumns(4,
+				widget.NewButton(LabelClear, func() {
+					updateDisplay(display, decimalLabel, ctrl.Input(LabelClear))
+				}),
+				widget.NewButton(LabelBack, func() {
+					updateDisplay(display, decimalLabel, ctrl.Input(LabelBack))
+				}),
+				widget.NewButton(LabelInverse, func() {
+					updateDisplay(display, decimalLabel, ctrl.ApplyFunction(LabelInverse))
+				}),
+				widget.NewButton(LabelSqr, func() {
+					updateDisplay(display, decimalLabel, ctrl.ApplyFunction(LabelSqr))
+				}),
+			)
+		} else {
+			row = container.NewGridWithColumns(2,
+				widget.NewButton(LabelClear, func() {
+					updateDisplay(display, decimalLabel, ctrl.Input(LabelClear))
+				}),
+				widget.NewButton(LabelBack, func() {
+					updateDisplay(display, decimalLabel, ctrl.Input(LabelBack))
+				}),
+			)
+		}
+		controlRowBox.Objects = []fyne.CanvasObject{row}
+		controlRowBox.Refresh()
+	}
+	controlRowBox = container.NewVBox()
+	updateControlRow()
+
+	modeSelect := widget.NewSelect(modeNames, func(sel string) {
+		switch sel {
+		case "Дроби":
+			currentMode = ModeFraction
+			fractionUI.Show()
+			tpUI.Hide()
+			tpControls.Hide()
+			complexUI.Hide()
+		case "p-числа":
+			currentMode = ModeTPNumber
+			fractionUI.Hide()
+			tpUI.Show()
+			tpControls.Show()
+			complexUI.Hide()
+		case "Комплексные":
+			currentMode = ModeComplex
+			fractionUI.Hide()
+			tpUI.Hide()
+			tpControls.Hide()
+			complexUI.Show()
+		}
+		updateControlRow()
+	})
+	modeSelect.Selected = modeNames[0]
+
 	labelRow := container.NewHBox(
-		widget.NewLabelWithStyle("Ввод:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Режим:", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		modeSelect,
 		layout.NewSpacer(),
 		copyBtn,
 		pasteBtn,
@@ -69,33 +169,13 @@ func InitUI(w fyne.Window) {
 		decimalLabel,
 	)
 
+	// ====== Fraction UI ======
 	numButtons := []string{
 		"7", "8", "9", LabelDivide,
 		"4", "5", "6", LabelMultiply,
 		"1", "2", "3", LabelMinus,
 		LabelNegate, "0", LabelDot, LabelPlus,
 	}
-
-	extras := []struct {
-		label  string
-		action func()
-	}{
-		{LabelClear, func() { updateDisplay(display, decimalLabel, ctrl.Input(LabelClear)) }},
-		{LabelBack, func() { updateDisplay(display, decimalLabel, ctrl.Input(LabelBack)) }},
-		{LabelSqr, func() { updateDisplay(display, decimalLabel, ctrl.ApplyFunction(LabelSqr)) }},
-		{LabelInverse, func() { updateDisplay(display, decimalLabel, ctrl.ApplyFunction(LabelInverse)) }},
-		{LabelMS, func() { ctrl.MemorySave() }},
-		{LabelMR, func() { updateDisplay(display, decimalLabel, ctrl.MemoryRead()) }},
-		{LabelMPlus, func() { ctrl.MemoryAdd() }},
-		{LabelMC, func() { ctrl.MemoryClear() }},
-	}
-
-	extraRow := container.NewGridWithColumns(4)
-	for _, e := range extras {
-		btn := widget.NewButton(e.label, e.action)
-		extraRow.Add(btn)
-	}
-
 	numGrid := container.NewGridWithColumns(4)
 	for _, label := range numButtons {
 		btn := widget.NewButton(label, func(lbl string) func() {
@@ -108,7 +188,6 @@ func InitUI(w fyne.Window) {
 		}
 		numGrid.Add(btn)
 	}
-
 	equalBtn := widget.NewButton(LabelEqual, func() {
 		updateDisplay(display, decimalLabel, ctrl.Evaluate())
 	})
@@ -119,46 +198,102 @@ func InitUI(w fyne.Window) {
 		}),
 		equalBtn,
 	)
+	fractionUI = container.NewVBox(numGrid, bottomRow)
 
-	keyboard := container.NewVBox(extraRow, numGrid, bottomRow)
+	// ====== TPNumber UI ======
 
+	digitButtons := make([]*widget.Button, 16)
+	digitRow := container.NewGridWithColumns(4)
+	for i := 0; i < 16; i++ {
+		lbl := fmt.Sprintf("%X", i)
+		btn := widget.NewButton(lbl, func(d string) func() {
+			return func() {
+				updateDisplay(display, decimalLabel, ctrl.Input(d))
+			}
+		}(lbl))
+		digitButtons[i] = btn
+		digitRow.Add(btn)
+	}
+
+	updateDigitButtonStates := func(base int) {
+		for i, btn := range digitButtons {
+			if i < base {
+				btn.Enable()
+			} else {
+				btn.Disable()
+			}
+		}
+	}
+	updateDigitButtonStates(int(tpBase.Value))
+	tpBase.OnChanged = func(v float64) {
+		base := int(v)
+		baseLabel.SetText(fmt.Sprintf("Основание: %d", base))
+		updateDigitButtonStates(base)
+	}
+	tpPrec.OnChanged = func(v float64) {
+		precLabel.SetText(fmt.Sprintf("Точность: %d", int(v)))
+	}
+	tpOps := container.NewGridWithColumns(4)
+	for _, op := range []string{LabelPlus, LabelMinus, LabelMultiply, LabelDivide} {
+		btn := widget.NewButton(op, func(opr string) func() {
+			return func() {
+				updateDisplay(display, decimalLabel, ctrl.Input(opr))
+			}
+		}(op))
+		btn.Importance = widget.HighImportance
+		tpOps.Add(btn)
+	}
+	tpEqual := widget.NewButton(LabelEqual, func() {
+		updateDisplay(display, decimalLabel, ctrl.Evaluate())
+	})
+	tpEqual.Importance = widget.HighImportance
+
+	tpUI = container.NewVBox(
+		digitRow,
+		tpOps,
+		tpEqual,
+	)
+	tpUI.Hide()
+
+	// ====== Complex UI ======
+	cplxGrid := container.NewGridWithColumns(4)
+	for _, label := range []string{
+		"7", "8", "9", LabelDivide,
+		"4", "5", "6", LabelMultiply,
+		"1", "2", "3", LabelMinus,
+		"i", "0", LabelDot, LabelPlus,
+	} {
+		btn := widget.NewButton(label, func(lbl string) func() {
+			return func() {
+				updateDisplay(display, decimalLabel, ctrl.Input(lbl))
+			}
+		}(label))
+		if label == LabelPlus || label == LabelMinus || label == LabelMultiply || label == LabelDivide {
+			btn.Importance = widget.HighImportance
+		}
+		cplxGrid.Add(btn)
+	}
+	cplxEqual := widget.NewButton(LabelEqual, func() {
+		updateDisplay(display, decimalLabel, ctrl.Evaluate())
+	})
+	cplxEqual.Importance = widget.HighImportance
+	complexUI = container.NewVBox(cplxGrid, cplxEqual)
+	complexUI.Hide()
+
+	// ====== MAIN LAYOUT ======
 	mainContent := container.NewVBox(
 		displayContainer,
 		layout.NewSpacer(),
-		keyboard,
+		tpControls,
+		controlRowBox,
+		msRow,
+		fractionUI,
+		tpUI,
+		complexUI,
 	)
 
 	w.Resize(fyne.NewSize(400, 600))
 	w.SetFixedSize(true)
-	w.Canvas().SetOnTypedKey(func(ev *fyne.KeyEvent) {
-		switch ev.Name {
-		case fyne.KeyBackspace:
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelBack))
-		case fyne.KeyDelete, fyne.KeyEscape:
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelClear))
-		case fyne.KeyReturn, fyne.KeyEnter:
-			updateDisplay(display, decimalLabel, ctrl.Evaluate())
-		}
-	})
-	w.Canvas().SetOnTypedRune(func(r rune) {
-		ch := string(r)
-		switch ch {
-		case "+":
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelPlus))
-		case "-":
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelMinus))
-		case "*", "x", "X":
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelMultiply))
-		case "/":
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelFracSep))
-		case ".", ",":
-			updateDisplay(display, decimalLabel, ctrl.Input(LabelDot))
-		default:
-			if ch >= "0" && ch <= "9" {
-				updateDisplay(display, decimalLabel, ctrl.Input(ch))
-			}
-		}
-	})
 	w.SetContent(mainContent)
 }
 
@@ -202,15 +337,13 @@ func openHistoryWindow(parent fyne.Window, historyWin fyne.Window, ctrl *Control
 			if historyWin != nil {
 				historyWin.Close()
 			}
-			openHistoryWindow(parent, historyWin, ctrl) // перерисовка
+			openHistoryWindow(parent, historyWin, ctrl)
 		})
-
 		row := container.NewBorder(nil, nil, nil, container.NewHBox(copyBtn, delBtn), label)
 		items = append(items, row)
 	}
 
 	scroll := container.NewVScroll(container.NewVBox(items...))
-
 	historyWin = fyne.CurrentApp().NewWindow("История вычислений")
 	historyWin.Resize(fyne.NewSize(400, 500))
 	historyWin.SetFixedSize(true)

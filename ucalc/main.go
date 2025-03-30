@@ -8,7 +8,7 @@ import (
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("Калькулятор простых дробей")
+	w := a.NewWindow("Универсальный калькулятор")
 	log.SetLevel(log.DebugLevel)
 
 	defer func() {
