@@ -60,6 +60,12 @@ func (e *Editor) Input(char string) string {
 }
 
 func (e *Editor) setOrReplaceChar(char, autoSetFirstOperand string) {
+	if char == LabelDot && strings.Contains(e.buffer, LabelFracSep) {
+		return
+	}
+	if char == LabelFracSep && strings.Contains(e.buffer, LabelDot) {
+		return
+	}
 	if !strings.Contains(e.buffer, char) {
 		if e.buffer == "" {
 			e.buffer += autoSetFirstOperand

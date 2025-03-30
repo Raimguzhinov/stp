@@ -20,6 +20,10 @@ type Number interface {
 
 func ParseNumber(s string) (Number, error) {
 	s = strings.ReplaceAll(s, " ", "")
+	isNegative := strings.HasPrefix(s, "-")
+	if isNegative {
+		s = strings.TrimPrefix(s, "-")
+	}
 
 	if strings.Contains(s, "/") {
 		parts := strings.Split(s, "/")
@@ -31,31 +35,44 @@ func ParseNumber(s string) (Number, error) {
 		if err1 != nil || err2 != nil {
 			return nil, errors.New("не удалось разобрать числитель или знаменатель")
 		}
+		if isNegative {
+			num = -num
+		}
 		return NewFractionNumber(num, den)
 	}
 
 	if strings.Contains(s, ".") {
-		floatVal, err := strconv.ParseFloat(s, 64)
-		if err != nil {
+		parts := strings.Split(s, ".")
+		if len(parts) != 2 {
 			return nil, errors.New("не удалось разобрать десятичное число")
 		}
-		str := strings.TrimPrefix(s, "-")
-		parts := strings.Split(str, ".")
-		decimalPlaces := len(parts[1])
-		multiplier := int64(1)
-		for i := 0; i < decimalPlaces; i++ {
-			multiplier *= 10
+		intPart := parts[0]
+		fracPart := parts[1]
+		if intPart == "" || fracPart == "" {
+			return nil, errors.New("неверный формат дроби")
 		}
-		intVal := int64(floatVal * float64(multiplier))
-		if floatVal < 0 {
-			intVal = -intVal
+
+		numeratorStr := intPart + fracPart
+		numerator, err := strconv.ParseInt(numeratorStr, 10, 64)
+		if err != nil {
+			return nil, err
 		}
-		return NewFractionNumber(intVal, multiplier)
+		if isNegative {
+			numerator = -numerator
+		}
+		denominator := int64(1)
+		for i := 0; i < len(fracPart); i++ {
+			denominator *= 10
+		}
+		return NewFractionNumber(numerator, denominator)
 	}
 
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return nil, err
+	}
+	if isNegative {
+		n = -n
 	}
 	return NewFractionNumber(n, 1)
 }
